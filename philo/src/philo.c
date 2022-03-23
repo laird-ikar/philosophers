@@ -3,56 +3,78 @@
 /*                                                        :::      ::::::::   */
 /*   philo.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bguyot <bguyot@student.42mulhouse.fr>      +#+  +:+       +#+        */
+/*   By: bdehais <bdehais@student.42mulhouse.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/03/22 18:54:06 by bguyot            #+#    #+#             */
-/*   Updated: 2022/03/22 21:14:10 by bguyot           ###   ########.fr       */
+/*   Created: 2022/03/21 12:28:37 by bdehais           #+#    #+#             */
+/*   Updated: 2022/03/23 15:07:18 by bdehais          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "philo.h"
+#include "../includes/philo.h"
 
-static void init(t_philo *philo, int n, char *args[]);
+static int	init(t_philo *philo, int n, char *args[]);
 static void	set_thread(t_philo *philo);
-static void tini(t_philo *philo);
+static void	tini(t_philo *philo);
+static int	malloc_pwease(t_philo *philo);
 
-int main(int argc, char *argv[])
+int	main(int argc, char *argv[])
 {
 	t_philo		*philo;
 
-	//TODO proteger malloc + argc
+	if (argc != 5 && argc != 6)
+		return (printf("Usage :\n\t./philo [number_of_philosophers] [time_to_di\
+e] [time_to_eat] [time_to_sleep] (nb_of_times_each_philosopher_must_eat)"));
 	philo = malloc(sizeof(t_philo));
-	init(philo, argc, argv);
-	set_thread(philo);
+	if (init(philo, argc, argv) >= 0)
+		set_thread(philo);
 	tini(philo);
 	free(philo);
 }
 
-static void init(t_philo *philo, int n, char *args[])
+static int	init(t_philo *philo, int n, char *args[])
 {
-	int	i;
-
+	philo->start = now();
 	philo->nb = ft_atoi(args[1]);
 	philo->die_time = ft_atoi(args[2]);
 	philo->eat_time = ft_atoi(args[3]);
 	philo->sleep_time = ft_atoi(args[4]);
 	if (n == 6)
 		philo->to_eat = ft_atoi(args[5]);
+	else
+		philo->to_eat = 2147483647;
 	philo->sim = 1;
 	pthread_mutex_init(&philo->waiter, NULL);
-	philo->forks = malloc(sizeof(t_fork *) * philo->nb);
+	if (malloc_pwease(philo) < 0)
+		return (-42);
+	dinner_is_served(philo);
+	return (0);
+}
+
+static int	malloc_pwease(t_philo *philo)
+{
+	int	i;
+
+	philo->forks = ft_calloc(sizeof(t_fork *), philo->nb);
 	philo->since_eat = malloc(sizeof(long long) * philo->nb);
 	philo->since_change = malloc(sizeof(long long) * philo->nb);
+	philo->turn = ft_calloc(sizeof(int), philo->nb);
+	philo->status = malloc(sizeof(int) * philo->nb);
+	philo->eat_times = ft_calloc(sizeof(int), philo->nb);
 	i = 0;
+	if (!philo->forks || !philo->since_eat || !philo->since_change
+		|| !philo->turn || !philo->status || !philo->eat_times)
+		return (-42);
 	while (i < philo->nb)
 	{
 		philo->forks[i] = malloc(sizeof(t_fork));
+		if (!philo->forks)
+			return (-42);
 		philo->forks[i]->is_held = 0;
 		philo->since_eat[i] = now();
 		philo->since_change[i] = now();
 		pthread_mutex_init(&philo->forks[i++]->mutex, NULL);
 	}
-	//TODO proteger malloc
+	return (0);
 }
 
 static void	set_thread(t_philo *philo)
@@ -84,7 +106,7 @@ static void	set_thread(t_philo *philo)
 	free(philosophers);
 }
 
-static void tini(t_philo *philo)
+static void	tini(t_philo *philo)
 {
 	int	i;
 
@@ -98,4 +120,6 @@ static void tini(t_philo *philo)
 	free(philo->forks);
 	free(philo->since_eat);
 	free(philo->since_change);
+	free(philo->turn);
+	free(philo->status);
 }
